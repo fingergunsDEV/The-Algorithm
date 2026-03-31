@@ -309,6 +309,19 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 
+<div id="collection-overlay" class="hidden">
+  <div id="collection-modal">
+    <div id="coll-head">
+      <h2>CARD CATALOGUE</h2>
+      <div class="spacer"></div>
+      <div id="coll-credits">0 Algorithm Credits</div>
+      <button class="btn btn-green" onclick="buyPack()">BUY DATA PACK (200₵)</button>
+      <button class="btn" onclick="toggleCollection()">CLOSE</button>
+    </div>
+    <div id="coll-body"></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -1019,6 +1032,14 @@ function oppTurn() {
   if (GS.oppLocked) return;
   GS.oppLocked=true;
 
+  // SAFETY VALVE: Force turn end if AI hangs for > 30s
+  const safetyValve = setTimeout(() => {
+    if (GS.isOppTurn && GS.oppLocked) {
+      console.warn('[TCG] AI Safety Valve triggered. Forcing turn end.');
+      oppTurnEnd();
+    }
+  }, 30000);
+
   log('─── OPPONENT TURN ───','warn');
   document.getElementById('status-pill').textContent='AI THINKING...';
   document.getElementById('status-pill').className='sp sp-warn';
@@ -1257,13 +1278,28 @@ function showPicker(title, cards) {
     const w=document.createElement('div');
     w.innerHTML=cardHTML(card,'size-bench bench-sel');
     const ce=w.firstElementChild;
-    ce.addEventListener('click',()=>{ cancelPicker(); if(GS.pickerCb) GS.pickerCb(i); });
+    ce.addEventListener('click',()=>{ 
+      const mode = GS.pickerMode;
+      cancelPicker(true); // force close
+      if(GS.pickerCb) GS.pickerCb(i); 
+    });
     el.appendChild(ce);
   });
+  
+  // MANDATORY ACTION SAFETY: hide cancel if we MUST pick (e.g. promoting)
+  const cancelBtn = document.querySelector('#bench-picker .btn');
+  if (cancelBtn) {
+    cancelBtn.style.display = (GS.pickerMode==='promote') ? 'none' : 'block';
+  }
+  
   document.getElementById('bench-picker').classList.add('show');
 }
 
-function cancelPicker() {
+function cancelPicker(force = false) {
+  if (GS.pickerMode === 'promote' && !force) {
+    toast('Required Action', 'You must select a new active talent to continue!', 'warn');
+    return;
+  }
   document.getElementById('bench-picker').classList.remove('show');
   GS.pickerCb=null; GS.pickerMode=null;
 }
