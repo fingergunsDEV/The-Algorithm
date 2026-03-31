@@ -982,6 +982,7 @@ function promptRetreat() {
 function doRetreat(benchIdx) {
   const cost=GS.playerActive.ret||0;
   GS.playerActive.attachedEnergy -= cost;
+  GS.retreatedThisTurn = true;
   const incoming={...GS.playerBench.splice(benchIdx,1)[0]};
   GS.playerBench.push({...GS.playerActive});
   GS.playerActive=incoming;
@@ -995,6 +996,16 @@ function doRetreat(benchIdx) {
 // ═══════════════════════════════════════════
 function clickBench(idx) {
   if (GS.isOppTurn||GS.phase==='ended') return;
+  
+  // Promotion if active is empty
+  if (!GS.playerActive) {
+    GS.playerActive = GS.playerBench.splice(idx, 1)[0];
+    log('Promoted: ' + GS.playerActive.name, 'ok');
+    toast('Promoted', GS.playerActive.name + ' is now your active.', 'ok');
+    render();
+    return;
+  }
+
   // If a resource card is selected in hand, attach it to this bench slot
   const sel=GS.selIdx;
   if (sel!==null && GS.playerHand[sel]?.type==='resource') {
@@ -1002,7 +1013,7 @@ function clickBench(idx) {
     else toast('Energy Limit','One energy attachment per turn.','warn');
     return;
   }
-  toast('Retreat','Use the RETREAT button to promote '+GS.playerBench[idx]?.name+' to active (energy required).','info');
+  toast('Retreat','Use the RETREAT button to swap '+GS.playerBench[idx]?.name+' with your active (energy required).','info');
 }
 
 // ═══════════════════════════════════════════
@@ -1422,12 +1433,13 @@ function renderPrizes() {
 // ═══════════════════════════════════════════
 function cardHTML(card, cls='') {
   const isTalent=card.type==='talent';
-  const hpPct=isTalent?Math.max(0,Math.round((card.currentHp/card.hp)*100)):0;
+  const curHp = card.currentHp !== undefined ? card.currentHp : (card.hp || 0);
+  const hpPct=isTalent?Math.max(0,Math.round((curHp/card.hp)*100)):0;
   const hpCls=hpPct>60?'':hpPct>30?'mid':'low';
   const hpBg=hpPct>60?'var(--green)':hpPct>30?'var(--amber)':'var(--red)';
   const tbCls=card.isLegend?'tl':card.type==='talent'?'tt':card.type==='resource'?'tr':'ts';
   const tbLbl=card.isLegend?'LEGEND':card.type.toUpperCase()+(isTalent&&card.stage>0?' S'+card.stage:'');
-  const isKO=isTalent&&card.currentHp<=0;
+  const isKO=isTalent&&curHp<=0;
   const pips=isTalent?Array(card.attachedEnergy||0).fill('<div class="e-pip"></div>').join(''):'';
 
   return `<div class="card ${isKO?'ko':''} ${cls}">
@@ -1436,7 +1448,7 @@ function cardHTML(card, cls='') {
     <div class="card-name">${s(card.name)}</div>
     ${isTalent?`
       <div class="hp-bar-wrap"><div class="hp-bar" style="width:${hpPct}%;background:${hpBg}"></div></div>
-      <div class="card-hp ${hpCls}">${card.currentHp}/${card.hp}</div>
+      <div class="card-hp ${hpCls}">${curHp}/${card.hp}</div>
       ${card.atk?`<div class="card-atk">⚔ ${s(card.atk)} (${card.dmg})</div>`:''}
       ${pips?`<div class="e-pips">${pips}</div>`:''}
       <div class="card-cost-b">⚡${card.cost}</div>
