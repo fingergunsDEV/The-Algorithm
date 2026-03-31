@@ -933,8 +933,12 @@ function doAttack() {
 
   animShake('opp-active');
 
-  if (GS.oppActive.currentHp<=0) { setTimeout(koOpp, 420); return; }
-  render(); refreshBtns();
+  if (GS.oppActive.currentHp<=0) { 
+    setTimeout(koOpp, 420); 
+  } else {
+    render(); refreshBtns();
+    setTimeout(endTurn, 1500); // Automate turn end after attack
+  }
 }
 
 function koOpp() {
@@ -959,6 +963,7 @@ function koOpp() {
     GS.oppActive=GS.oppBench.shift();
     log('Opponent promoted '+GS.oppActive.name+' to active.','info');
     render(); refreshBtns();
+    setTimeout(endTurn, 1200); // Automate turn end after KO resolution
   } else {
     gameOver('TALENT SHORTAGE WIN!','Opponent has no bench talent left. You win!',true);
   }
